@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  webapp:
+    build:
+      context: .
+      dockerfile: webapp.Dockerfile
+
+    container_name: "webapp"
+
+    ports:
+      - "8081:8081"
+
+  mongo:
+    image: mongo:4
+    container_name: "mongodb"
+    environment:
+      - AUTH=yes
+      - MONGODB_ADMIN_USER=artur
+      - MONGODB_ADMIN_PASS=password
+      - MONGODB_APPLICATION_DATABASE=sample
+      - MONGODB_APPLICATION_USER=aashrey
+      - MONGODB_APPLICATION_PASS=admin123
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./:/usr/src/app
+      - mongodata:/data/db
+    command: mongod
+
+volumes:
+  mongodata:
