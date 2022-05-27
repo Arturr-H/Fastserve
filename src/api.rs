@@ -127,6 +127,7 @@ pub mod utils {
     pub enum ResponseType {
         Text,
         Json,
+        Html,
     }
 
     /*- Return a http response containing the status -*/
@@ -144,6 +145,7 @@ pub mod utils {
         let response_type = match response_type {
             Some(ResponseType::Text) => "text/plain",
             Some(ResponseType::Json) => "application/json",
+            Some(ResponseType::Html) => "text/html",
             None => "text/plain",
         };
 
@@ -227,6 +229,7 @@ pub mod functions {
 
     /*- Imports -*/
     use std::net::TcpStream;
+    use std::collections::HashMap;
     use crate::api::utils::{
         HeaderReturn, parse_headers, respond, ResponseType,
         expect_headers,
@@ -245,7 +248,7 @@ pub mod functions {
         return client.database("db");
     }
     
-    pub fn test_fn(mut stream:TcpStream, request:String) {
+    pub fn test_fn(mut stream:TcpStream, request:String, _params:HashMap<String, String>) {
 
         /*- Get the headers -*/
         let headers = parse_headers(&request, HeaderReturn::All);
@@ -257,7 +260,7 @@ pub mod functions {
         };
     }
 
-    pub fn get_all_users(mut stream:TcpStream, _:String) {
+    pub fn get_all_users(mut stream:TcpStream, _:String, _params:HashMap<String, String>) {
 
         let db:mongodb::sync::Database = initialize_client();
         let users = db.collection::<mongodb::bson::Document>("users").find(None, None).unwrap();
@@ -268,7 +271,7 @@ pub mod functions {
         respond(&mut stream, 200, Some(ResponseType::Json), Some(format!("{:?}", users_vec).as_str()));
     }
 
-    pub fn insert_user(mut stream:TcpStream, _request:String) {
+    pub fn insert_user(mut stream:TcpStream, _request:String, _params:HashMap<String, String>) {
 
         let db:mongodb::sync::Database = initialize_client();
         let users = db.collection::<mongodb::bson::Document>("users");
@@ -276,6 +279,28 @@ pub mod functions {
 
         users.insert_one(user, None).unwrap();
 
+        respond(&mut stream, 200, None, None);
+    }
+
+    pub fn google_test(mut stream:TcpStream, _request:String, params:HashMap<String, String>) {
+        println!("{}",             format!("https://{}",
+        params.get("url").unwrap_or(&String::from(""))
+    ));
+        let response = reqwest::blocking::get(
+            format!("https://{}",
+                params.get("url").unwrap_or(&String::from(""))
+            )
+        ).unwrap();
+
+        respond(&mut stream, 200, Some(ResponseType::Html), Some(&response.text().unwrap()
+            .replace("<body", "<body style='filter: blur(2px)'")
+        ));
+    }
+
+    pub fn param_test(mut stream:TcpStream, _request:String, params:HashMap<String, String>) {
+
+        println!("{:#?}", params);
+        
         respond(&mut stream, 200, None, None);
     }
 }

@@ -10,6 +10,8 @@ registry = "git://github.com/rust-lang/crates.io-index.git"
 lazy_static = "0.1"
 rand = "0.8"
 termcolor = "1.1"
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+tokio = { version = "1", features = ["full"] }
 
 [dependencies.mongodb]
 mongodb = "2.1.0"

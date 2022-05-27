@@ -5,9 +5,11 @@ pub mod server {
     use std::net::TcpListener;
     use std::net::TcpStream;
     use std::io::prelude::*;
+    use std::collections::HashMap;
     use webserver::ThreadHandler;
     use std::fs;
     use termcolor::{ Color };
+    use std::path::Path;
     use crate::api::utils::log;
 
     /*- The options that the user has before starting the server -*/
@@ -16,11 +18,18 @@ pub mod server {
         pub url:&'static str,
         pub port:usize,
         pub numthreads:usize,
-        pub static_files:&'static str,
+        // pub static_files:&'static str,
         pub routes:Vec<RouteRoot>,
-        pub custom404:Option<&'static str>,
         pub log_status:bool,
-        pub on_connect:Option<fn(&String)>
+        pub on_connect:Option<fn(&String)>,
+        pub statics:Statics,
+    }
+    
+    #[derive(Clone)]
+    pub struct Statics {
+        pub dir:&'static str,
+        pub serve:bool,
+        pub custom404:Option<&'static str>,
     }
     
     /*- Ok to explain the RouteRoot enum -> -*/
@@ -44,7 +53,7 @@ pub mod server {
     #[derive(Copy, Clone, Debug)]
     pub enum RouteValue {
         File(&'static str),
-        Function(fn(TcpStream, String) -> ()),
+        Function(fn(TcpStream, String, HashMap<String, String>) -> ()),
         None
     }
     
@@ -114,39 +123,60 @@ pub mod server {
         /*- Get the path from the request -*/
         let path = request.split("\n").nth(0).unwrap();
         let path = path.split(" ").nth(1).unwrap();
-    
+
+        /*- First check if user wants to serve all static files -*/
+        if options.statics.serve {
+            if send_file(stream, path, options.statics.dir) == true { return; };
+        };
+
         /*- Iterate over all of them -*/
         let value = iterate_routes(&options.routes, path, 0u8, "", &options);
 
         /*- Get the users prefered 404 file -*/
-        let custom_404 = options.custom404.unwrap_or("404.html");
+        let custom_404 = options.statics.custom404.unwrap_or("404.html");
     
         /*- See if the value is either a function or a file -*/
-        match value {
-            RouteValue::File(file_path) => return send_file(stream, file_path, &options.static_files),
-            RouteValue::Function(func) => func(stream.try_clone().unwrap(), request),
-            RouteValue::None => return send_file(stream, custom_404, &options.static_files),
+        match value.value {
+            RouteValue::File(file_path) => send_file(stream, file_path, &options.statics.dir),
+            RouteValue::Function(func) => return func(stream.try_clone().unwrap(), request, value.params),
+            RouteValue::None => send_file(stream, custom_404, &options.statics.dir),
         };
     }
+
+    fn remove_empty(vec:Vec<&str>) -> Vec<&str> {
+        let mut new_vec = Vec::new();
+        for item in vec {
+            if item.len() > 0 {
+                new_vec.push(item);
+            }
+        }
+        return new_vec;
+    }
     
+    /*- We'll return a Routevalue and sometimes a param-map -*/
+    pub struct RoutesReturn {
+        value:RouteValue,
+        params:HashMap<String, String>,
+    }
+
     /*- Iterate over all of the routes to find the path's value -*/
-    pub fn iterate_routes(routes:&Vec<RouteRoot>, input_path:&str, index:u8, path_iter:&str, options:&ServerOptions) -> RouteValue {
+    pub fn iterate_routes(routes:&Vec<RouteRoot>, input_path:&str, index:u8, path_iter:&str, options:&ServerOptions) -> RoutesReturn {
     
         /*- What to finnaly return -*/
-        let mut return_value:RouteValue = RouteValue::None;
+        let mut return_value:RoutesReturn = RoutesReturn { value:RouteValue::None, params:HashMap::new() };
     
         /*- Iterate -*/
         'main: for route in routes.iter() {
-    
+            println!("\n\n");
             /*- Check wether the route is a stack, or a path -*/
             match route {
                 RouteRoot::Stack(path,routes) => {
                     let possible_route = iterate_routes(&routes.clone(), input_path, index+1, (path_iter.to_string().clone() + *path).as_str(), &options);
                     
                     /*- If the route is a file, return it -*/
-                    match possible_route {
-                        RouteValue::File(file_path) => return_value =  RouteValue::File(file_path),
-                        RouteValue::Function(func) => return_value =  RouteValue::Function(func),
+                    match possible_route.value {
+                        RouteValue::File(file_path) => return_value = RoutesReturn { value:RouteValue::File(file_path), params:possible_route.params },
+                        RouteValue::Function(func) => return_value = RoutesReturn { value:RouteValue::Function(func), params:possible_route.params },
                         RouteValue::None => (),
                     };
                 },
@@ -161,31 +191,68 @@ pub mod server {
                     } else {
                         full_path = path_iter.to_string() + enpoint_name;
                     };
+
+                    /*- The map will contain the uri-variables (params). Like when connecting to test/:id -*/
+                    let mut map:HashMap<String, String> = HashMap::new();
+
+                    let mut full_iter  = remove_empty(full_path.split("/").collect::<Vec<&str>>());
+                    let mut input_iter = remove_empty(input_path.split("/").collect::<Vec<&str>>());
+
+                    /*- Add all params to the map -*/
+                    for (index, param) in full_iter.clone().iter().enumerate() {
+                        if param.starts_with(":") {
+
+                            /*- Find the index of param inside of the full_iter -*/
+                            let remove_index:usize = full_iter.iter().position(|&x| &x == param).unwrap();
+
+                            /*- Insert it into the map -*/
+                            map.insert(param[1..].to_string(), input_iter
+                                                                        .iter()
+                                                                        .nth(remove_index)
+                                                                        .unwrap_or(&"null")
+                                                                        .to_string());
+
+                            /*- Remove the param from both the full_iter, and input_iter.
+                                We want to do this because later when we'll check if the
+                                path exists, the server will compare ex '/some/:id' with
+                                '/some/hello' and won't know they're the same -*/
+
+                            if full_iter.len() > index-1 && input_iter.len() > index-1 {
+
+                                full_iter.remove(remove_index);
+                                input_iter.remove(remove_index);
+
+                                println!("\nremove");
+                                println!("full_iter: {:?}", full_iter);
+                                println!("input_iter: {:?}\n", input_iter);
+                            };
+                        };
+                    };
     
                     /*- If the path is the same as the path we're looking for,
                         return the path -*/
                     match path {
                         RouteValue::File(file_path) => {
                             /*- Check if the path matches the one inputted -*/
-                            if full_path == input_path {
-                                return_value = RouteValue::File(file_path);
+                            if full_iter == input_iter {
+                                return_value = RoutesReturn { value: RouteValue::File(file_path), params: map };
     
                                 break 'main;
                             }
                         },
                         RouteValue::Function(func) => {
                             /*- Check if the path matches the one inputted - again... -*/
-                            if full_path == input_path {
-                                return_value = RouteValue::Function(*func);
+                            if full_iter == input_iter {
+                                return_value = RoutesReturn { value: RouteValue::Function(*func), params: map };
     
                                 break 'main;
                             }
                         },
                         RouteValue::None => {
-                            if let Some(c) = options.custom404 {
-                                return_value = RouteValue::File(c);
+                            if let Some(c) = options.statics.custom404 {
+                                return_value = RoutesReturn { value: RouteValue::File(c), params: map };
                             }else {
-                                return_value = RouteValue::File("404.html");
+                                return_value = RoutesReturn { value: RouteValue::File("404.html"), params: map };
                             };
                         },
                     };
@@ -198,11 +265,14 @@ pub mod server {
     }
     
     /*- Send a file with its content -*/
-    pub fn send_file(stream:&mut TcpStream, path:&str, static_file_path:&str) {
+    pub fn send_file(stream:&mut TcpStream, path:&str, static_file_path:&str) -> bool {
 
         /*- Get the FULL file path -*/
         let full_path = format!("{}/{}", static_file_path, path);
-        
+
+        /*- Check if the file exists -*/
+        if !Path::new(&full_path).is_file() { return false; };
+
         /*- Get the file contents -*/
         let file_content = fs::read_to_string(
             &full_path
@@ -218,5 +288,8 @@ pub mod server {
         let res:&str = &format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}", file_content.len(), file_content);
         stream.write(res.as_bytes()).unwrap();
         stream.flush().unwrap();
+
+        /*- Return success -*/
+        true
     }
 }
