@@ -11,7 +11,7 @@ fn main() {
 
         RR::Stack("/", vec![
             RR::Endpoint("website/:url", RV::Function(api::functions::google_test)),
-            RR::Endpoint("hej/:url/:shit", RV::Function(api::functions::param_test)),
+            RR::Endpoint("start/:url/:shit/end", RV::Function(api::functions::param_test)),
             RR::Endpoint("hejs",         RV::Function(api::functions::insert_user)),
             RR::Endpoint("function",     RV::Function(api::functions::get_all_users)),
             RR::Endpoint("test",         RV::Function(api::functions::test_fn)),
@@ -28,7 +28,7 @@ fn main() {
     /*- Start the server -*/
     server::start(ServerOptions {
         routes    : routes.clone(),
-        url       : "127.0.0.1",   //127.0.0.1
+        url       : "127.0.0.1",//127.0.0.1
         port      : 8081,
         numthreads: 10,
         statics   : Statics {

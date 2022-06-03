@@ -167,7 +167,6 @@ pub mod server {
     
         /*- Iterate -*/
         'main: for route in routes.iter() {
-            println!("\n\n");
             /*- Check wether the route is a stack, or a path -*/
             match route {
                 RouteRoot::Stack(path,routes) => {
@@ -216,15 +215,9 @@ pub mod server {
                                 We want to do this because later when we'll check if the
                                 path exists, the server will compare ex '/some/:id' with
                                 '/some/hello' and won't know they're the same -*/
-
-                            if full_iter.len() > index-1 && input_iter.len() > index-1 {
-
-                                full_iter.remove(remove_index);
+                            if full_iter.len() > index-1 && input_iter.len() > remove_index {
+                                full_iter .remove(remove_index);
                                 input_iter.remove(remove_index);
-
-                                println!("\nremove");
-                                println!("full_iter: {:?}", full_iter);
-                                println!("input_iter: {:?}\n", input_iter);
                             };
                         };
                     };

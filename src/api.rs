@@ -9,8 +9,9 @@ pub mod utils {
     use std::net::TcpStream;
     use std::io::Write;
     use lazy_static::lazy_static;
-    use termcolor::{ Color };
-    use termcolor::{ ColorChoice, ColorSpec, StandardStream, WriteColor };
+    use std::hash::{ Hash, Hasher };
+    use std::collections::hash_map::DefaultHasher;
+    use termcolor::{ Color, ColorChoice, ColorSpec, StandardStream, WriteColor };
 
     /*- Static mutable variables -*/
     lazy_static! {
@@ -220,6 +221,19 @@ pub mod utils {
         /*- Reset the color -*/
         reset_terminal_color(&mut stdout);
     }
+
+    /*- Hash input -*/
+    pub(super) fn hash<H: Hash>(hashval:&H,u:bool) -> String {
+        /*- Initialize the hasher -*/
+        let mut hasher = DefaultHasher::new();
+
+        /*- Hash the string and end it -*/
+        hashval.hash(&mut hasher);
+
+        /*- Make it hex -*/
+        if u { return format!("{:X}", hasher.finish()); }
+        else { return format!("{:x}", hasher.finish()); }
+    }
 }
 
 /*- Put all endpoint-functions in here -*/
@@ -232,7 +246,7 @@ pub mod functions {
     use std::collections::HashMap;
     use crate::api::utils::{
         HeaderReturn, parse_headers, respond, ResponseType,
-        expect_headers,
+        expect_headers, hash,
     };
     use mongodb::{
         bson::doc,
@@ -283,9 +297,6 @@ pub mod functions {
     }
 
     pub fn google_test(mut stream:TcpStream, _request:String, params:HashMap<String, String>) {
-        println!("{}",             format!("https://{}",
-        params.get("url").unwrap_or(&String::from(""))
-    ));
         let response = reqwest::blocking::get(
             format!("https://{}",
                 params.get("url").unwrap_or(&String::from(""))
@@ -298,9 +309,13 @@ pub mod functions {
     }
 
     pub fn param_test(mut stream:TcpStream, _request:String, params:HashMap<String, String>) {
-
-        println!("{:#?}", params);
-        
-        respond(&mut stream, 200, None, None);
+        respond(&mut stream, 200, Some(ResponseType::Text), Some(
+            &format!(
+                "param1: {}, param2: {} \n hash:{}",
+                params.get("url").unwrap(),
+                params.get("shit").unwrap(),
+                hash(&params.get("url"), false)
+            )
+        ));
     }
 }
