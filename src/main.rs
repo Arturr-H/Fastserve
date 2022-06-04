@@ -1,5 +1,5 @@
-mod app;
 mod api;
+mod app;
 use crate::app::server::{ ServerOptions, Statics, RouteRoot as RR, RouteValue as RV };
 use crate::app::server;
 
