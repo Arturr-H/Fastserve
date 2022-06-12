@@ -12,6 +12,7 @@ use std::fs;
 use termcolor::Color;
 use std::path::Path;
 use crate::server::utils::{ log, respond, ResponseType };
+use crate::global::VISIBLE;
 
 /*- The options that the user has before starting the server -*/
 #[derive(Clone)]
@@ -67,7 +68,7 @@ pub fn start(options:ServerOptions) {
     );
 
     /*- If used in production, change unwrap to something that handles errors -*/
-    let server_listener:TcpListener = TcpListener::bind(&server_url).unwrap();
+    let server_listener:TcpListener = TcpListener::bind(&VISIBLE).unwrap();
 
     /*- Log -*/
     if options.log_status { log(Color::Rgb(255, 255, 0), format!("Server open on {}", &server_url).as_str()) };
