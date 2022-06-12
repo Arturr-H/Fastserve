@@ -9,7 +9,7 @@ pub mod functions {
     use std::fs;
     use std::path::Path;
     use crate::global::{ PORT, URL, VISIBLE, PROTOCOL };
-    use crate::app::utils::{
+    use crate::server::utils::{
         expect_headers, respond, parse_headers,
         hash, ResponseType, HeaderReturn
     };
@@ -105,7 +105,7 @@ pub mod functions {
         respond(&mut stream, 200, Some(ResponseType::Html), Some(&end_html));
     }
 
-    pub fn terminal(mut stream:TcpStream, _:String, params:HashMap<String, String>) {
+    pub fn terminal(mut stream:TcpStream, _:String, params:HashMap<String, String>) -> () {
 
         /*- Get the command the user wants to execute -*/
         let command:&str = &params.get("command").unwrap();
@@ -126,5 +126,5 @@ pub mod functions {
         
 
         respond(&mut stream, 200, Some(ResponseType::Text), Some(&output));
-    })
+    }
 }

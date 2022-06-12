@@ -1,3 +1,3 @@
 mod api;
-mod app;
+mod server;
 mod global;

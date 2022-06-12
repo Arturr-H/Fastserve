@@ -1,9 +1,8 @@
 mod api;
-mod app;
+mod server;
 mod global;
-use crate::app::server::{ ServerOptions, Statics, RouteRoot as RR, RouteValue as RV };
-use crate::app::server;
-use crate::global::{ PORT, URL };
+use server::{ ServerOptions, Statics, RouteRoot as RR, RouteValue as RV };
+use global::{ PORT, URL };
 
 fn main() {
 

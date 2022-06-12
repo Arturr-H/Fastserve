@@ -1102,7 +1102,6 @@ dependencies = [
  "reqwest",
  "termcolor",
  "tokio",
- "url",
 ]
 
 [[package]]
