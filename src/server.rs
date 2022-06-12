@@ -263,7 +263,7 @@ pub fn iterate_routes(routes:&Vec<RouteRoot>, input_path:&str, index:u8, path_it
 pub fn send_file(stream:&mut TcpStream, path:&str, static_file_path:&str) -> bool {
 
     /*- Get the FULL file path -*/
-    let full_path = format!("{}{}", static_file_path, path);
+    let full_path = format!("{}/{}", static_file_path, path);
 
     /*- Check if the file exists -*/
     if !Path::new(&full_path).is_file() { return false; };
