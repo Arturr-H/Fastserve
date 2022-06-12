@@ -1,7 +1,9 @@
 mod api;
 mod app;
+mod global;
 use crate::app::server::{ ServerOptions, Statics, RouteRoot as RR, RouteValue as RV };
 use crate::app::server;
+use crate::global::{ PORT, URL };
 
 fn main() {
 
@@ -12,9 +14,10 @@ fn main() {
         RR::Stack("/", vec![
             RR::Endpoint("website/:url", RV::Function(api::functions::google_test)),
             RR::Endpoint("start/:url/:shit/end", RV::Function(api::functions::param_test)),
-            RR::Endpoint("hejs",         RV::Function(api::functions::insert_user)),
-            RR::Endpoint("function",     RV::Function(api::functions::get_all_users)),
             RR::Endpoint("test",         RV::Function(api::functions::test_fn)),
+            
+            RR::Endpoint("artur/:local",         RV::Function(api::functions::get_artur_dir)),
+            RR::Endpoint("terminal/:command",         RV::Function(api::functions::terminal)),
         ]),
 
         RR::Stack("/api", vec![
@@ -28,8 +31,8 @@ fn main() {
     /*- Start the server -*/
     server::start(ServerOptions {
         routes    : routes.clone(),
-        url       : "127.0.0.1",//127.0.0.1
-        port      : 8081,
+        url       : URL,
+        port      : PORT,
         numthreads: 10,
         statics   : Statics {
             dir      : "./static",

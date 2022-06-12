@@ -12,8 +12,4 @@ rand = "0.8"
 termcolor = "1.1"
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 tokio = { version = "1", features = ["full"] }
-
-[dependencies.mongodb]
-mongodb = "2.1.0"
-default-features = false
-features = ["sync"]
+num = "0.2.1"

@@ -7,3 +7,5 @@ COPY . .
 EXPOSE 8081
 
 RUN cargo build
+
+ENTRYPOINT [ "cargo", "run" ]

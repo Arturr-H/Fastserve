@@ -126,7 +126,7 @@ pub mod server {
 
         /*- First check if user wants to serve all static files -*/
         if options.statics.serve {
-            if send_file(stream, path, options.statics.dir) == true { return; };
+            if send_file(stream, path, options.statics.dir) == true { return; }
         };
 
         /*- Iterate over all of them -*/
@@ -290,7 +290,7 @@ pub mod server {
 /*- Put all general-purpose functions here, like
     parsing headers, sending repsonses and more -*/
 pub(crate) mod utils {
-    #![allow(deprecated)]
+    #![allow(deprecated, dead_code)]
 
     use std::collections::HashMap;
     use std::net::TcpStream;
