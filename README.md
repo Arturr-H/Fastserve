@@ -2,21 +2,18 @@
 Simple and clean, here's how you can set it up! 👇
 
 ```rust
-mod app;
-mod api;
-use crate::app::server::{ ServerOptions, RouteRoot as RR, RouteValue as RV };
-use crate::api::utils::{ parse_headers, HeaderReturn };
-use crate::app::server;
+/*- Imports -*/
+use fastserve::{ ServerOptions, RouteRoot as RR, RouteValue as RV, Statics };
 
 fn main() {
-
+    
     /*- The route-structure -*/
     let routes:Vec<RR> = vec![
         RR::Endpoint("",                         RV::File("index.html")),
 
         RR::Stack("/", vec![
-            RR::Endpoint("hejs",                 RV::Function(some_func)),
-            RR::Endpoint("function",             RV::Function(other_func)),
+            RR::Endpoint("hejs",                 RV::Function(|_,_,_| {})),
+            RR::Endpoint("function",             RV::Function(|_,_,_| {})),
         ]),
 
         RR::Stack("/api", vec![
@@ -27,14 +24,13 @@ fn main() {
     ];
 
     /*- Start the server -*/
-    server::start(ServerOptions {
+    fastserve::start(ServerOptions {
         url         : "127.0.0.1",      // Use 0.0.0.0 if using ex Docker
         port        : 8081,             // The http-port you want to use
         numthreads  : 10,               // Amount of clients that can join concurrently
         routes      : routes.clone(),   // The route-structure
-        custom404   : Some("404.html"), // Default is '404.html'
         log_status  : true,             // Will log things, like when the server starts
-        on_connect  : Some(on_connect)  // Do something when a user is connected
+        on_connect  : Some(on_connect), // Do something when a user is connected
         statics   : Statics {
             dir      : "./static",       // The directory where you put your static files
             custom404: Some("404.html"), // Defaults to ''404.html' if None
@@ -43,7 +39,7 @@ fn main() {
     });
 }
 
-fn on_connect(request:&String) {
-    println!("{:#?}", parse_headers(&request, HeaderReturn::All));
+fn on_connect(_request:&String) {
+    println!("{:#?}", "someone connected!");
 }
 ```

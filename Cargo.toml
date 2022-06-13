@@ -1,7 +1,13 @@
 [package]
-name = "webserver"
-version = "0.1.0"
+name = "fastserve"
+version = "0.1.3"
 edition = "2021"
+description = "A simple and quick way of creating a backend to serve static files / api endpoints"
+license = "MIT"
+keywords = ["webserver", "backend", "api"]
+repository = "https://github.com/Arturr-H/Rust-server.git"
+homepage = "https://artur.red"
+documentation = "https://artur.red"
 
 [source.crates-io]
 registry = "git://github.com/rust-lang/crates.io-index.git"

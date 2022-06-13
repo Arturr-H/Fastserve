@@ -46,8 +46,7 @@ lazy_static! {
     ];
 }
 
-/*- The get_header function can either take
-    multiple header requests as input, or just one -*/
+/// The get_header function can either take multiple header requests as input, or just one
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum HeaderReturn<'l> {
@@ -58,7 +57,8 @@ pub enum HeaderReturn<'l> {
     None,
 }
 
-/*- Get the request headers -*/
+/// Parse headers by using a request-string as input, and specify what headers you want returned
+/// By using ```HeaderReturn``` you can specify if you either want all headers back or just some
 pub fn parse_headers<'a>(request:&'a str, header:HeaderReturn<'a>) -> HeaderReturn<'a> {
     /*- Get the headers from the request -*/
     let header_strings = request.split("\n");
@@ -120,7 +120,6 @@ pub fn parse_headers<'a>(request:&'a str, header:HeaderReturn<'a>) -> HeaderRetu
     };
 }
 
-/*- What we want to respond with -*/
 #[derive(Debug)]
 pub enum ResponseType {
     Text,
@@ -136,8 +135,13 @@ pub enum ResponseTypeImage {
     Webp,
     Svg,
 }
-
-/*- Return a http response containing the status -*/
+///
+/// Return a http response containing the status, and optionally some content
+/// # Examples
+/// ```
+/// respond(&mut stream, 200u16, Some(ResponseType::Text), "Hello World");
+/// ```
+/// 
 pub fn respond(
     stream:&mut TcpStream,
     status:u16,
@@ -182,8 +186,13 @@ pub fn respond(
     stream.flush().unwrap();
 }
 
-/*- Quick function to respond with a message
-    saying that some headers might be missing -*/
+/// Quick function to respond with a message saying that some headers might be missing
+/// # Examples
+/// ```
+/// if !expect_headers(&mut stream, &headers, vec!["Content-Type", "Content-Length"]) {
+///     return;
+/// };
+/// ```
 pub fn expect_headers(
     stream:&mut TcpStream,
     headers:&HeaderReturn,
@@ -219,7 +228,11 @@ fn reset_terminal_color(stdout: &mut StandardStream) {
             .unwrap();
 }
 
-/*- Print a response with colors -*/
+/// Print a response with colors
+/// # Examples
+/// ```
+/// log(Color::Green, "Hello World");
+/// ```
 pub fn log(clr:Color, msg:&str) {
     /*- Set new standard output -*/
     let mut stdout = StandardStream::stdout(ColorChoice::Always);
