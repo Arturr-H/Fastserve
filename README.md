@@ -3,7 +3,7 @@ Simple and clean, here's how you can set it up! 👇
 
 ```rust
 /*- Imports -*/
-use fastserve::{ ServerOptions, RouteRoot as RR, RouteValue as RV, Statics };
+use fastserve::{ ServerOptions, RouteRoot as RR, RouteValue as RV, Statics, Method };
 
 fn main() {
     
@@ -12,8 +12,8 @@ fn main() {
         RR::Endpoint("",                         RV::File("index.html")),
 
         RR::Stack("/", vec![
-            RR::Endpoint("hejs",                 RV::Function(|_,_,_| {})),
-            RR::Endpoint("function",             RV::Function(|_,_,_| {})),
+            RR::Endpoint("hejs",                 RV::Function((Method::Get,  |_,_,_| {}))),
+            RR::Endpoint("function",             RV::Function((Method::Post, |_,_,_| {}))),
         ]),
 
         RR::Stack("/api", vec![
