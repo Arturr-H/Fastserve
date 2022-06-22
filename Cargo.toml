@@ -1,6 +1,6 @@
 [package]
 name = "fastserve"
-version = "0.1.4"
+version = "0.2.1"
 edition = "2021"
 description = "A simple and quick way of creating a backend to serve static files / api endpoints"
 license = "MIT"
