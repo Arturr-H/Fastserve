@@ -54,11 +54,15 @@ pub enum RouteRoot {
     Endpoint(&'static str, RouteValue),
 }
 
+/*- The http method that will be bound to each endpoint -*/
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Method { Get, Post, Put, None }
+
 /*- Routes can either be a filepath, or a function -*/
 #[derive(Copy, Clone, Debug)]
 pub enum RouteValue {
     File(&'static str),
-    Function(fn(TcpStream, String, HashMap<String, String>) -> ()),
+    Function((Method, fn(TcpStream, String, HashMap<String, String>) -> ())),
     None
 }
 
@@ -140,16 +144,28 @@ pub fn exec_path(request:String, stream:&mut TcpStream, options:ServerOptions) -
         if send_file(stream, path, options.statics.dir) == true { return; }
     };
 
-    /*- Iterate over all of them -*/
-    let value = iterate_routes(&options.routes, path, 0u8, "", &options);
-
     /*- Get the users prefered 404 file -*/
     let custom_404 = options.statics.custom404.unwrap_or("404.html");
+
+    /*- See if the method matches the required one -*/
+    let requested_method:&str = &request.split(" ").nth(0).unwrap_or(&"").to_ascii_lowercase();
+    let requested_method:Method = match requested_method {
+        "get" => Method::Get,
+        "post" => Method::Post,
+        "put" => Method::Put,
+        _ => {
+            send_file(stream, custom_404, &options.statics.dir);
+            Method::None
+        }
+    };
+
+    /*- Iterate over all of them -*/
+    let value = iterate_routes(&options.routes, path, 0u8, "", &options, requested_method);
 
     /*- See if the value is either a function or a file -*/
     match value.value {
         RouteValue::File(file_path) => send_file(stream, file_path, &options.statics.dir),
-        RouteValue::Function(func) => return func(stream.try_clone().unwrap(), request, value.params),
+        RouteValue::Function((_, func)) => return func(stream.try_clone().unwrap(), request, value.params),
         RouteValue::None => send_file(stream, custom_404, &options.statics.dir),
     };
 }
@@ -172,7 +188,14 @@ pub struct RoutesReturn {
 }
 
 /*- Iterate over all of the routes to find the path's value -*/
-pub fn iterate_routes(routes:&Vec<RouteRoot>, input_path:&str, index:u8, path_iter:&str, options:&ServerOptions) -> RoutesReturn {
+pub fn iterate_routes(
+    routes:&Vec<RouteRoot>,
+    input_path:&str,
+    index:u8,
+    path_iter:&str,
+    options:&ServerOptions,
+    requested_method:Method
+) -> RoutesReturn {
 
     /*- What to finnaly return -*/
     let mut return_value:RoutesReturn = RoutesReturn { value:RouteValue::None, params:HashMap::new() };
@@ -182,12 +205,19 @@ pub fn iterate_routes(routes:&Vec<RouteRoot>, input_path:&str, index:u8, path_it
         /*- Check wether the route is a stack, or a path -*/
         match route {
             RouteRoot::Stack(path,routes) => {
-                let possible_route = iterate_routes(&routes.clone(), input_path, index+1, (path_iter.to_string().clone() + *path).as_str(), &options);
+                let possible_route = iterate_routes(
+                    &routes.clone(),
+                    input_path,
+                    index+1,
+                    (path_iter.to_string().clone() + *path).as_str(),
+                    &options,
+                    requested_method
+                );
                 
                 /*- If the route is a file, return it -*/
                 match possible_route.value {
-                    RouteValue::File(file_path) => return_value = RoutesReturn { value:RouteValue::File(file_path), params:possible_route.params },
-                    RouteValue::Function(func) => return_value = RoutesReturn { value:RouteValue::Function(func), params:possible_route.params },
+                    RouteValue::File(file_path) => return_value          = RoutesReturn { value:RouteValue::File(file_path),            params:possible_route.params },
+                    RouteValue::Function((method, func)) => return_value = RoutesReturn { value:RouteValue::Function((method, func)),   params:possible_route.params },
                     RouteValue::None => (),
                 };
             },
@@ -245,12 +275,22 @@ pub fn iterate_routes(routes:&Vec<RouteRoot>, input_path:&str, index:u8, path_it
                             break 'main;
                         }
                     },
-                    RouteValue::Function(func) => {
+                    RouteValue::Function((required_method, func)) => {
                         /*- Check if the path matches the one inputted - again... -*/
                         if full_iter == input_iter {
-                            return_value = RoutesReturn { value: RouteValue::Function(*func), params: map };
 
-                            break 'main;
+                            /*- Check if the required http method matches the requested http method -*/
+                            // Example: The server has an endpoint named "/api/upload-image". The server
+                            // has specified that the path /api/upload-image requires users to use the POST
+                            // method. If a GET-request is sent instead, we'll first try to find if there
+                            // are any /api/upload-image paths that requires GET-methods, if it wasn't found,
+                            // we'll send an 404 page.
+                            if requested_method == *required_method {
+                                return_value = RoutesReturn { value: RouteValue::Function((*required_method, *func)), params: map };
+
+                                /*- We only break the search loop when we actually find something to return. -*/
+                                break 'main;
+                            }
                         }
                     },
                     RouteValue::None => {
